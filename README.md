@@ -1,54 +1,44 @@
-# LangGraph + Gemini Simple Q&A
+# GraphMind — LangGraph × Gemini
 
-Required assignment flow:
+A polished conversational AI demo built with LangGraph, LangChain, Google Gemini, Flask, and Render.
 
-User Question -> LLM -> Answer
+## Workflow
 
-## Setup
+`START → User Question → Gemini LLM node → Answer → END`
 
-1. Open this folder in VS Code.
-2. Open Terminal > New Terminal.
-3. Create a virtual environment:
+The browser sends the user's message to `/api/chat`. The Flask backend passes it into a compiled LangGraph `StateGraph`; the Gemini node generates the response and the graph returns it to the UI.
 
-   py -3.14 -m venv .venv
+## Features
 
-4. Activate on Windows PowerShell:
+- Premium responsive chat interface
+- Conversational context for follow-up questions
+- Explicit LangGraph workflow visualization
+- Server-side Gemini API key handling
+- Health endpoint for deployment monitoring
+- Render-ready Gunicorn configuration
+- Mobile-friendly interview/demo experience
 
-   .\\.venv\\Scripts\\Activate.ps1
+## Run locally
 
-   Or Command Prompt:
+```bash
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+# macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+# Put your Gemini key in .env
+python app.py
+```
 
-   .venv\\Scripts\\activate
+Open `http://localhost:10000`.
 
-5. Install packages:
+## Environment variables
 
-   python -m pip install --upgrade pip
-   pip install -r requirements.txt
+- `GOOGLE_API_KEY` — required, keep secret
+- `GEMINI_MODEL` — defaults to `gemini-3.7-flash`
 
-6. Create a file called `.env`.
+## Production
 
-7. Put your NEW Gemini API key in it:
+Build: `pip install -r requirements.txt`
 
-   GOOGLE_API_KEY=your_key_here
-   GEMINI_MODEL=gemini-3.6-flash
-
-8. Run:
-
-   python app.py
-
-For a single question: `python single_question.py "What is LangGraph?"`
-
-To display the compiled graph: `python show_graph.py`
-
-Example:
-
-You: What is LangGraph?
-Gemini: LangGraph is a framework for building stateful AI workflows...
-
-Graph:
-
-START -> llm -> END
-
-State fields:
-- question
-- answer
+Start: `gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120`
