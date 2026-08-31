@@ -1,7 +1,8 @@
-"""Print the compiled workflow as a Mermaid graph."""
+"""Compile the workflow and display its Mermaid graph definition."""
+from workflow import graph
 
-from workflow import workflow
-
+def main() -> None:
+    print(graph.get_graph().draw_mermaid())
 
 if __name__ == "__main__":
-    print(workflow.get_graph().draw_mermaid())
+    main()

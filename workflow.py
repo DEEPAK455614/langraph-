@@ -1,55 +1,38 @@
-"""Simple LangGraph workflow: User Question -> Gemini LLM -> Answer."""
-
+"""LangGraph workflow: START -> Gemini LLM -> END."""
 import os
-from typing import TypedDict
-
+from typing import NotRequired
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import END, START, StateGraph
+from typing_extensions import TypedDict
 
 load_dotenv()
 
-
 class QAState(TypedDict):
-    """State passed through the workflow."""
     question: str
-    answer: str
+    answer: NotRequired[str]
 
-
-def call_llm(state: QAState) -> dict:
-    """Send the question from state to Gemini and return the answer."""
-    api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise RuntimeError(
-            "Gemini API key not found. Create .env and add "
-            "GOOGLE_API_KEY=your_key_here"
-        )
-
-    llm = ChatGoogleGenerativeAI(
-        model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
-        temperature=0,
-        max_retries=2,
+def _gemini() -> ChatGoogleGenerativeAI:
+    api_key = os.getenv("GOOGLE_API_KEY")
+    if not api_key or api_key == "PASTE_YOUR_GEMINI_API_KEY_HERE":
+        raise RuntimeError("GOOGLE_API_KEY is not configured. Add your Gemini API key to .env.")
+    return ChatGoogleGenerativeAI(
+        model=os.getenv("GEMINI_MODEL", "gemini-3.6-flash"),
         api_key=api_key,
-        vertexai=False,
     )
-    response = llm.invoke(state["question"])
+
+def gemini_llm(state: QAState) -> dict[str, str]:
+    response = _gemini().invoke(state["question"])
     return {"answer": response.text}
 
+builder = StateGraph(QAState)
+builder.add_node("gemini_llm", gemini_llm)
+builder.add_edge(START, "gemini_llm")
+builder.add_edge("gemini_llm", END)
+graph = builder.compile()
 
-def build_workflow():
-    graph_builder = StateGraph(QAState)
-    graph_builder.add_node("llm", call_llm)
-    graph_builder.add_edge(START, "llm")
-    graph_builder.add_edge("llm", END)
-    return graph_builder.compile()
-
-
-workflow = build_workflow()
-
-
-def ask(question: str) -> str:
+def ask_question(question: str) -> str:
     question = question.strip()
     if not question:
         raise ValueError("Question cannot be empty.")
-    result = workflow.invoke({"question": question, "answer": ""})
-    return result["answer"]
+    return graph.invoke({"question": question})["answer"]

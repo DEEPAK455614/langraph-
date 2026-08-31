@@ -1,33 +1,29 @@
 """Interactive terminal interface for the LangGraph + Gemini workflow."""
 
-from workflow import ask
+from workflow import ask_question
 
 
 def main() -> None:
-    print("=" * 60)
-    print("LANGGRAPH + GEMINI QUESTION ANSWERING")
-    print("Flow: User Question -> LLM -> Answer")
-    print("Type 'exit' to close.")
-    print("=" * 60)
-
+    print("\n=== Simple LangGraph + Gemini Q&A ===")
+    print("Flow: User Question -> Gemini LLM -> Answer")
+    print("Type 'exit' to stop.\n")
     while True:
         try:
-            question = input("\nYou: ").strip()
+            question = input("You: ").strip()
         except (EOFError, KeyboardInterrupt):
             print("\nGoodbye!")
             break
-
         if question.lower() in {"exit", "quit"}:
             print("Goodbye!")
             break
         if not question:
-            print("Please enter a question.")
+            print("Please type a question.\n")
             continue
-
         try:
-            print(f"\nGemini: {ask(question)}")
+            print(f"Gemini: {ask_question(question)}\n")
         except Exception as exc:
-            print(f"\nError: {exc}")
+            print(f"\nERROR: {exc}")
+            print("Check your Gemini API key and internet connection.\n")
 
 
 if __name__ == "__main__":

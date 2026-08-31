@@ -1,4 +1,4 @@
-langgraph
-langchain-google-genai
-python-dotenv
-typing-extensions
+langgraph>=0.6
+langchain-google-genai>=4.0
+python-dotenv>=1.1
+typing-extensions>=4.12

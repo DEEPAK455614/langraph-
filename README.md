@@ -1,55 +1,54 @@
-# LangGraph + Gemini Question Answering Workflow
+# LangGraph + Gemini Simple Q&A
 
-A simple LangGraph workflow that receives a user question, sends it to Google Gemini, and returns the answer.
+Required assignment flow:
 
-## Workflow
+User Question -> LLM -> Answer
 
-```text
-START -> LLM Node -> END
-```
+## Setup
 
-- **State:** `QAState` stores the `question` and `answer`.
-- **Node:** `call_llm` reads the question, calls Gemini, and returns the answer.
-- **Edges:** `START -> llm -> END` define execution order.
+1. Open this folder in VS Code.
+2. Open Terminal > New Terminal.
+3. Create a virtual environment:
 
-## Setup on Windows
+   py -3.14 -m venv .venv
 
-1. Clone or download this repository.
-2. Open the folder in VS Code.
-3. Create and activate a virtual environment:
+4. Activate on Windows PowerShell:
 
-```powershell
-py -3.13 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-```
+   .\\.venv\\Scripts\\Activate.ps1
 
-4. Install dependencies:
+   Or Command Prompt:
 
-```powershell
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-```
+   .venv\\Scripts\\activate
 
-5. Copy `.env.example` to `.env`, then add your Gemini API key. Never commit `.env`.
+5. Install packages:
 
-## Run
+   python -m pip install --upgrade pip
+   pip install -r requirements.txt
 
-```powershell
-python app.py
-```
+6. Create a file called `.env`.
 
-One-question demo:
+7. Put your NEW Gemini API key in it:
 
-```powershell
-python single_question.py
-```
+   GOOGLE_API_KEY=your_key_here
+   GEMINI_MODEL=gemini-3.6-flash
 
-Print the workflow graph:
+8. Run:
 
-```powershell
-python show_graph.py
-```
+   python app.py
 
-## Demonstration video
+For a single question: `python single_question.py "What is LangGraph?"`
 
-https://www.loom.com/share/d05c8f1df43b4138b822b1211eeb4c81
+To display the compiled graph: `python show_graph.py`
+
+Example:
+
+You: What is LangGraph?
+Gemini: LangGraph is a framework for building stateful AI workflows...
+
+Graph:
+
+START -> llm -> END
+
+State fields:
+- question
+- answer
