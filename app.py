@@ -1,30 +1,61 @@
-"""Interactive terminal interface for the LangGraph + Gemini workflow."""
-
+import os
+import time
+from flask import Flask, jsonify, render_template_string, request
 from workflow import ask_question
 
+app = Flask(__name__)
 
-def main() -> None:
-    print("\n=== Simple LangGraph + Gemini Q&A ===")
-    print("Flow: User Question -> Gemini LLM -> Answer")
-    print("Type 'exit' to stop.\n")
-    while True:
-        try:
-            question = input("You: ").strip()
-        except (EOFError, KeyboardInterrupt):
-            print("\nGoodbye!")
-            break
-        if question.lower() in {"exit", "quit"}:
-            print("Goodbye!")
-            break
-        if not question:
-            print("Please type a question.\n")
-            continue
-        try:
-            print(f"Gemini: {ask_question(question)}\n")
-        except Exception as exc:
-            print(f"\nERROR: {exc}")
-            print("Check your Gemini API key and internet connection.\n")
+PAGE = r'''<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="theme-color" content="#070b14" />
+<title>GraphMind — LangGraph × Gemini</title>
+<style>
+:root{--bg:#060912;--panel:rgba(13,18,32,.72);--line:rgba(255,255,255,.09);--text:#f7f8fb;--muted:#9aa5b5;--a:#8b5cf6;--b:#22d3ee;--good:#34d399;--shadow:0 30px 80px rgba(0,0,0,.42)}*{box-sizing:border-box}html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:radial-gradient(circle at 18% 10%,rgba(139,92,246,.18),transparent 29%),radial-gradient(circle at 88% 15%,rgba(34,211,238,.14),transparent 25%),var(--bg);color:var(--text)}body:before{content:"";position:fixed;inset:0;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);background-size:42px 42px;mask-image:linear-gradient(to bottom,black,transparent 75%)}.shell{max-width:1440px;margin:auto;min-height:100%;padding:22px}.top{height:64px;display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);background:rgba(7,11,20,.64);backdrop-filter:blur(20px);border-radius:20px;padding:0 20px;box-shadow:var(--shadow)}.brand{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:-.03em}.logo{width:36px;height:36px;border-radius:12px;background:conic-gradient(from 210deg,var(--a),var(--b),#fff,var(--a));box-shadow:0 0 30px rgba(139,92,246,.35);position:relative}.logo:after{content:"";position:absolute;inset:7px;background:#0a0f1b;border-radius:8px}.brand small{display:block;color:var(--muted);font-weight:500;font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin-top:2px}.status{display:flex;gap:9px;align-items:center;color:#b8c1cf;font-size:13px}.dot{width:8px;height:8px;background:var(--good);border-radius:50%;box-shadow:0 0 12px var(--good)}.grid{display:grid;grid-template-columns:320px minmax(0,1fr);gap:18px;margin-top:18px;min-height:calc(100vh - 126px)}.side,.chat{border:1px solid var(--line);background:var(--panel);backdrop-filter:blur(24px);border-radius:24px;box-shadow:var(--shadow)}.side{padding:20px;display:flex;flex-direction:column}.eyebrow{font-size:11px;color:#8e9aab;text-transform:uppercase;letter-spacing:.14em;font-weight:700}.side h1{font-size:28px;line-height:1.02;margin:10px 0 10px;letter-spacing:-.045em}.side p{font-size:13px;line-height:1.65;color:var(--muted);margin:0}.flow{margin:24px 0}.node{padding:12px 13px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.025);display:flex;align-items:center;justify-content:space-between;font-size:13px}.node strong{font-weight:650}.pill{font-size:10px;color:#c8d0db;border:1px solid var(--line);padding:3px 7px;border-radius:999px}.arrow{text-align:center;color:#566174;padding:5px}.stack{display:flex;flex-wrap:wrap;gap:7px}.tag{font-size:11px;border:1px solid var(--line);padding:7px 9px;border-radius:10px;color:#aeb7c4;background:rgba(255,255,255,.02)}.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:auto;padding-top:22px}.stat{border:1px solid var(--line);border-radius:14px;padding:11px}.stat b{display:block;font-size:14px}.stat span{font-size:10px;color:var(--muted)}.chat{display:flex;flex-direction:column;overflow:hidden;min-height:660px}.chatHead{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}.chatTitle{display:flex;align-items:center;gap:11px}.orb{width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,var(--b) 15%,var(--a) 55%,#141827 70%);box-shadow:0 0 28px rgba(34,211,238,.25)}.chatTitle b{font-size:14px}.chatTitle span{display:block;font-size:11px;color:var(--muted);margin-top:2px}.clear{background:transparent;color:#96a1b0;border:1px solid var(--line);border-radius:10px;padding:8px 10px;cursor:pointer}.messages{flex:1;padding:26px;overflow:auto;scroll-behavior:smooth}.welcome{max-width:700px;margin:6vh auto 0;text-align:center}.welcome .heroOrb{width:70px;height:70px;margin:auto;border-radius:24px;background:linear-gradient(145deg,var(--a),var(--b));box-shadow:0 20px 50px rgba(83,76,255,.3);display:grid;place-items:center;font-size:29px}.welcome h2{font-size:34px;letter-spacing:-.045em;margin:20px 0 8px}.welcome p{color:var(--muted);font-size:14px;line-height:1.65;margin:0 auto 24px;max-width:540px}.prompts{display:grid;grid-template-columns:1fr 1fr;gap:9px;text-align:left}.prompt{border:1px solid var(--line);background:rgba(255,255,255,.025);color:#c6ced9;border-radius:14px;padding:13px;cursor:pointer;font-size:12px}.prompt:hover{border-color:rgba(139,92,246,.5);background:rgba(139,92,246,.06)}.row{display:flex;margin:16px 0}.row.user{justify-content:flex-end}.bubble{max-width:min(760px,84%);font-size:14px;line-height:1.65;padding:13px 16px;border-radius:18px;white-space:pre-wrap;word-wrap:break-word}.user .bubble{background:linear-gradient(135deg,#6d4aff,#7557e8);color:#fff;border-bottom-right-radius:5px}.assistant .bubble{background:rgba(255,255,255,.045);border:1px solid var(--line);border-bottom-left-radius:5px}.meta{font-size:10px;color:#737f91;margin-top:5px}.composerWrap{padding:15px 18px 18px;border-top:1px solid var(--line);background:rgba(5,8,15,.5)}.composer{display:flex;align-items:flex-end;gap:10px;border:1px solid rgba(255,255,255,.12);background:#0b101d;border-radius:18px;padding:9px 10px 9px 15px;transition:.2s}.composer:focus-within{border-color:rgba(139,92,246,.55);box-shadow:0 0 0 4px rgba(139,92,246,.08)}textarea{flex:1;resize:none;max-height:150px;min-height:34px;background:transparent;border:0;outline:0;color:#fff;font:inherit;line-height:1.45;padding:7px 0}textarea::placeholder{color:#626d7e}.send{width:40px;height:40px;border:0;border-radius:13px;color:white;cursor:pointer;background:linear-gradient(135deg,var(--a),#5b6df8);font-size:17px;box-shadow:0 8px 20px rgba(109,74,255,.3)}.send:disabled{opacity:.45;cursor:not-allowed}.foot{text-align:center;color:#626d7e;font-size:10px;margin-top:9px}.typing{display:inline-flex;gap:4px;padding:5px}.typing i{width:6px;height:6px;background:#8f9bad;border-radius:50%;animation:b 1.1s infinite}.typing i:nth-child(2){animation-delay:.14s}.typing i:nth-child(3){animation-delay:.28s}@keyframes b{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-4px);opacity:1}}@media(max-width:900px){.shell{padding:10px}.grid{grid-template-columns:1fr}.side{display:none}.chat{min-height:calc(100vh - 94px)}.top{height:58px;border-radius:16px}.status span:last-child{display:none}.messages{padding:17px}.welcome{margin-top:4vh}.welcome h2{font-size:28px}.prompts{grid-template-columns:1fr}.bubble{max-width:92%}}
+</style>
+</head>
+<body><div class="shell">
+<header class="top"><div class="brand"><div class="logo"></div><div>GraphMind<small>LangGraph × Gemini</small></div></div><div class="status"><span class="dot"></span><span>Workflow online</span><span>•</span><span>Gemini 3.7 Flash</span></div></header>
+<main class="grid"><aside class="side"><div class="eyebrow">Interactive AI workflow</div><h1>One graph.<br>Infinite questions.</h1><p>A production-ready demonstration of a LangGraph state machine orchestrating Google's Gemini model.</p><div class="flow"><div class="node"><strong>START</strong><span class="pill">input</span></div><div class="arrow">↓</div><div class="node"><strong>User Question</strong><span class="pill">state</span></div><div class="arrow">↓</div><div class="node"><strong>Gemini LLM</strong><span class="pill">node</span></div><div class="arrow">↓</div><div class="node"><strong>Answer</strong><span class="pill">output</span></div><div class="arrow">↓</div><div class="node"><strong>END</strong><span class="pill">graph</span></div></div><div class="eyebrow" style="margin-bottom:9px">Built with</div><div class="stack"><span class="tag">LangGraph</span><span class="tag">LangChain</span><span class="tag">Gemini API</span><span class="tag">Flask</span><span class="tag">Render</span></div><div class="stats"><div class="stat"><b>StateGraph</b><span>orchestration</span></div><div class="stat"><b>Server-side</b><span>API key security</span></div></div></aside>
+<section class="chat"><div class="chatHead"><div class="chatTitle"><div class="orb"></div><div><b>Gemini Assistant</b><span>Powered through a LangGraph node</span></div></div><button class="clear" onclick="clearChat()">New chat</button></div><div class="messages" id="messages"><div class="welcome" id="welcome"><div class="heroOrb">✦</div><h2>What can I help you explore?</h2><p>Ask anything. Your question is passed into LangGraph state, routed through the Gemini LLM node, and returned here as the graph output.</p><div class="prompts"><button class="prompt" onclick="usePrompt(this)">Explain LangGraph in simple terms</button><button class="prompt" onclick="usePrompt(this)">How does this workflow process my question?</button><button class="prompt" onclick="usePrompt(this)">Write a Python function for binary search</button><button class="prompt" onclick="usePrompt(this)">Give me 3 ideas for an AI automation project</button></div></div></div><div class="composerWrap"><div class="composer"><textarea id="input" rows="1" placeholder="Message GraphMind…" aria-label="Message"></textarea><button class="send" id="send" onclick="sendMessage()">↑</button></div><div class="foot">LangGraph demo • Responses generated by Gemini • Enter to send, Shift+Enter for new line</div></div></section></main></div>
+<script>
+const input=document.getElementById('input'),messages=document.getElementById('messages'),send=document.getElementById('send');let history=[];
+input.addEventListener('input',()=>{input.style.height='auto';input.style.height=Math.min(input.scrollHeight,150)+'px'});input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}});
+function esc(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
+function add(role,text,meta=''){document.getElementById('welcome')?.remove();const row=document.createElement('div');row.className='row '+role;row.innerHTML=`<div><div class="bubble">${esc(text)}</div>${meta?`<div class="meta">${esc(meta)}</div>`:''}</div>`;messages.appendChild(row);messages.scrollTop=messages.scrollHeight;return row}
+function usePrompt(el){input.value=el.textContent;sendMessage()}
+function clearChat(){history=[];messages.innerHTML=`<div class="welcome" id="welcome"><div class="heroOrb">✦</div><h2>Start a new conversation</h2><p>Your next message begins a fresh LangGraph interaction.</p><div class="prompts"><button class="prompt" onclick="usePrompt(this)">Explain LangGraph in simple terms</button><button class="prompt" onclick="usePrompt(this)">How does this workflow process my question?</button></div></div>`;input.focus()}
+async function sendMessage(){const q=input.value.trim();if(!q||send.disabled)return;add('user',q);input.value='';input.style.height='auto';send.disabled=true;const typing=document.createElement('div');typing.className='row assistant';typing.innerHTML='<div class="bubble"><span class="typing"><i></i><i></i><i></i></span></div>';messages.appendChild(typing);messages.scrollTop=messages.scrollHeight;const started=performance.now();try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:q,history:history.slice(-10)})});const data=await r.json();typing.remove();if(!r.ok)throw new Error(data.error||'Request failed');const ms=Math.round(performance.now()-started);add('assistant',data.answer,`LangGraph → ${data.model} • ${ms} ms`);history.push({role:'user',content:q},{role:'assistant',content:data.answer});}catch(err){typing.remove();add('assistant','I could not complete that request. '+err.message,'Error');}finally{send.disabled=false;input.focus()}}
+</script></body></html>'''
 
+@app.get("/")
+def index():
+    return render_template_string(PAGE)
+
+@app.get("/health")
+def health():
+    return jsonify({"status": "ok", "service": "graphmind", "model": os.getenv("GEMINI_MODEL", "gemini-3.7-flash")})
+
+@app.post("/api/chat")
+def chat():
+    payload = request.get_json(silent=True) or {}
+    message = str(payload.get("message", "")).strip()
+    history = payload.get("history", [])
+    if not message:
+        return jsonify({"error": "Message is required."}), 400
+    if len(message) > 12000:
+        return jsonify({"error": "Message is too long."}), 400
+    if not isinstance(history, list):
+        history = []
+    started = time.perf_counter()
+    try:
+        answer = ask_question(message, history[-10:])
+        return jsonify({"answer": answer, "model": os.getenv("GEMINI_MODEL", "gemini-3.7-flash"), "latency_ms": round((time.perf_counter()-started)*1000)})
+    except Exception:
+        app.logger.exception("Chat request failed")
+        return jsonify({"error": "The AI service is temporarily unavailable. Check the server configuration and API key."}), 500
 
 if __name__ == "__main__":
-    main()
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", "10000")), debug=False)
