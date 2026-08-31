@@ -1,3 +1,5 @@
+Flask>=3.1,<4
+Gunicorn>=23,<24
 langgraph>=0.6
 langchain-google-genai>=4.0
 python-dotenv>=1.1
