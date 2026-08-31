@@ -9,10 +9,6 @@ from typing_extensions import TypedDict
 
 load_dotenv()
 
-# Pinned to the current stable Gemini API model so stale hosting env vars
-# cannot force a retired/incompatible model such as gemini-2.5-flash.
-MODEL_NAME = "gemini-3.7-flash"
-
 class QAState(TypedDict):
     question: str
     history: NotRequired[list[dict[str, Any]]]
@@ -23,7 +19,7 @@ def _gemini() -> ChatGoogleGenerativeAI:
     if not api_key or api_key == "PASTE_YOUR_GEMINI_API_KEY_HERE":
         raise RuntimeError("GOOGLE_API_KEY is not configured.")
     return ChatGoogleGenerativeAI(
-        model=MODEL_NAME,
+        model=os.getenv("GEMINI_MODEL", "gemini-3.6-flash"),
         api_key=api_key,
         temperature=0.4,
     )
@@ -42,7 +38,7 @@ def gemini_llm(state: QAState) -> dict[str, str]:
             messages.append(HumanMessage(content=content))
     messages.append(HumanMessage(content=state["question"]))
     response = _gemini().invoke(messages)
-    text = response.content if isinstance(response.content, str) else str(response.content)
+    text = response.content if isinstance(response.content, str) else getattr(response, "text", str(response.content))
     return {"answer": text}
 
 builder = StateGraph(QAState)
